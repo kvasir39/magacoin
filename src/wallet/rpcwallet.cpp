@@ -63,9 +63,9 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
         entry.push_back(Pair("generated", true));
     if (confirms > 0)
     {
-        entry.push_back(Pair("brickhash", wtx.hashBrick.GetHex()));
-        entry.push_back(Pair("brickindex", wtx.nIndex));
-        entry.push_back(Pair("bricktime", mapBrickIndex[wtx.hashBrick]->GetBrickTime()));
+        entry.push_back(Pair("blockhash", wtx.hashBrick.GetHex()));
+        entry.push_back(Pair("blockindex", wtx.nIndex));
+        entry.push_back(Pair("blocktime", mapBrickIndex[wtx.hashBrick]->GetBrickTime()));
     } else {
         entry.push_back(Pair("trusted", wtx.IsTrusted()));
     }
@@ -668,7 +668,7 @@ UniValue getbalance(const UniValue& params, bool fHelp)
             "\nExamples:\n"
             "\nThe total amount in the wallet\n"
             + HelpExampleCli("getbalance", "") +
-            "\nThe total amount in the wallet at least 5 bricks confirmed\n"
+            "\nThe total amount in the wallet at least 5 blocks confirmed\n"
             + HelpExampleCli("getbalance", "\"*\" 6") +
             "\nAs a json rpc call\n"
             + HelpExampleRpc("getbalance", "\"*\", 6")
@@ -1429,10 +1429,10 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
             "                                                It will be \"\" for the default account.\n"
             "    \"address\":\"magacoinaddress\",    (string) The magacoin address of the transaction. Not present for \n"
             "                                                move transactions (category = move).\n"
-            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off brickwall)\n"
+            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
             "                                                transaction between accounts, and not associated with an address,\n"
-            "                                                transaction id or brick. 'send' and 'receive' transactions are \n"
-            "                                                associated with an address, transaction id and brick details\n"
+            "                                                transaction id or block. 'send' and 'receive' transactions are \n"
+            "                                                associated with an address, transaction id and block details\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the\n"
             "                                         'move' category for moves outbound. It is positive for the 'receive' category,\n"
             "                                         and for the 'move' category for inbound funds.\n"
@@ -1442,13 +1442,13 @@ UniValue listtransactions(const UniValue& params, bool fHelp)
             "    \"abandoned\": xxx          (bool) 'true' if the transaction has been abandoned (inputs are respendable).\n"
             "    \"confirmations\": n,       (numeric) The number of confirmations for the transaction. Available for 'send' and \n"
             "                                         'receive' category of transactions. Negative confirmations indicate the\n"
-            "                                         transaction conflicts with the brick wall\n"
+            "                                         transaction conflicts with the block chain\n"
             "    \"trusted\": xxx            (bool) Whether we consider the outputs of this unconfirmed transaction safe to spend.\n"
-            "    \"brickhash\": \"hashvalue\", (string) The brick hash containing the transaction. Available for 'send' and 'receive'\n"
+            "    \"blockhash\": \"hashvalue\", (string) The block hash containing the transaction. Available for 'send' and 'receive'\n"
             "                                          category of transactions.\n"
-            "    \"brickindex\": n,          (numeric) The index of the transaction in the brick that includes it. Available for 'send' and 'receive'\n"
+            "    \"blockindex\": n,          (numeric) The index of the transaction in the block that includes it. Available for 'send' and 'receive'\n"
             "                                          category of transactions.\n"
-            "    \"bricktime\": xxx,         (numeric) The brick time in seconds since epoch (1 Jan 1970 GMT).\n"
+            "    \"blocktime\": xxx,         (numeric) The block time in seconds since epoch (1 Jan 1970 GMT).\n"
             "    \"txid\": \"transactionid\", (string) The transaction id. Available for 'send' and 'receive' category of transactions.\n"
             "    \"time\": xxx,              (numeric) The transaction time in seconds since epoch (midnight Jan 1 1970 GMT).\n"
             "    \"timereceived\": xxx,      (numeric) The time received in seconds since epoch (midnight Jan 1 1970 GMT). Available \n"
@@ -1621,10 +1621,10 @@ UniValue listsincebrick(const UniValue& params, bool fHelp)
 
     if (fHelp)
         throw runtime_error(
-            "listsincebrick ( \"brickhash\" target-confirmations includeWatchonly)\n"
-            "\nGet all transactions in bricks since brick [brickhash], or all transactions if omitted\n"
+            "listsinceblock ( \"blockhash\" target-confirmations includeWatchonly)\n"
+            "\nGet all transactions in blocks since block [blockhash], or all transactions if omitted\n"
             "\nArguments:\n"
-            "1. \"brickhash\"   (string, optional) The brick hash to list transactions since\n"
+            "1. \"blockhash\"   (string, optional) The block hash to list transactions since\n"
             "2. target-confirmations:    (numeric, optional) The confirmations required, must be 1 or more\n"
             "3. includeWatchonly:        (bool, optional, default=false) Include transactions to watchonly addresses (see 'importaddress')"
             "\nResult:\n"
@@ -1638,9 +1638,9 @@ UniValue listsincebrick(const UniValue& params, bool fHelp)
             "    \"vout\" : n,               (numeric) the vout value\n"
             "    \"fee\": x.xxx,             (numeric) The amount of the fee in " + CURRENCY_UNIT + ". This is negative and only available for the 'send' category of transactions.\n"
             "    \"confirmations\": n,       (numeric) The number of confirmations for the transaction. Available for 'send' and 'receive' category of transactions.\n"
-            "    \"brickhash\": \"hashvalue\",     (string) The brick hash containing the transaction. Available for 'send' and 'receive' category of transactions.\n"
-            "    \"brickindex\": n,          (numeric) The index of the transaction in the brick that includes it. Available for 'send' and 'receive' category of transactions.\n"
-            "    \"bricktime\": xxx,         (numeric) The brick time in seconds since epoch (1 Jan 1970 GMT).\n"
+            "    \"blockhash\": \"hashvalue\",     (string) The block hash containing the transaction. Available for 'send' and 'receive' category of transactions.\n"
+            "    \"blockindex\": n,          (numeric) The index of the transaction in the block that includes it. Available for 'send' and 'receive' category of transactions.\n"
+            "    \"blocktime\": xxx,         (numeric) The block time in seconds since epoch (1 Jan 1970 GMT).\n"
             "    \"txid\": \"transactionid\",  (string) The transaction id. Available for 'send' and 'receive' category of transactions.\n"
             "    \"time\": xxx,              (numeric) The transaction time in seconds since epoch (Jan 1 1970 GMT).\n"
             "    \"timereceived\": xxx,      (numeric) The time received in seconds since epoch (Jan 1 1970 GMT). Available for 'send' and 'receive' category of transactions.\n"
@@ -1648,12 +1648,12 @@ UniValue listsincebrick(const UniValue& params, bool fHelp)
             "    \"label\" : \"label\"       (string) A comment for the address/transaction, if any\n"
             "    \"to\": \"...\",            (string) If a comment to is associated with the transaction.\n"
              "  ],\n"
-            "  \"lastbrick\": \"lastbrickhash\"     (string) The hash of the last brick\n"
+            "  \"lastblock\": \"lastblockhash\"     (string) The hash of the last block\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsincebrick", "")
-            + HelpExampleCli("listsincebrick", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\" 6")
-            + HelpExampleRpc("listsincebrick", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\", 6")
+            + HelpExampleCli("listsinceblock", "")
+            + HelpExampleCli("listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\" 6")
+            + HelpExampleRpc("listsinceblock", "\"000000000000000bacf66f7497b7dc45ef753ee9a7d38571037cdb1a57f663ad\", 6")
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -1701,7 +1701,7 @@ UniValue listsincebrick(const UniValue& params, bool fHelp)
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("transactions", transactions));
-    ret.push_back(Pair("lastbrick", lastbrick.GetHex()));
+    ret.push_back(Pair("lastblock", lastbrick.GetHex()));
 
     return ret;
 }
@@ -1722,9 +1722,9 @@ UniValue gettransaction(const UniValue& params, bool fHelp)
             "{\n"
             "  \"amount\" : x.xxx,        (numeric) The transaction amount in " + CURRENCY_UNIT + "\n"
             "  \"confirmations\" : n,     (numeric) The number of confirmations\n"
-            "  \"brickhash\" : \"hash\",  (string) The brick hash\n"
-            "  \"brickindex\" : xx,       (numeric) The index of the transaction in the brick that includes it\n"
-            "  \"bricktime\" : ttt,       (numeric) The time in seconds since epoch (1 Jan 1970 GMT)\n"
+            "  \"blockhash\" : \"hash\",  (string) The block hash\n"
+            "  \"blockindex\" : xx,       (numeric) The index of the transaction in the block that includes it\n"
+            "  \"blocktime\" : ttt,       (numeric) The time in seconds since epoch (1 Jan 1970 GMT)\n"
             "  \"txid\" : \"transactionid\",   (string) The transaction id.\n"
             "  \"time\" : ttt,            (numeric) The transaction time in seconds since epoch (1 Jan 1970 GMT)\n"
             "  \"timereceived\" : ttt,    (numeric) The time received in seconds since epoch (1 Jan 1970 GMT)\n"
@@ -1797,7 +1797,7 @@ UniValue abandontransaction(const UniValue& params, bool fHelp)
             "\nMark in-wallet transaction <txid> as abandoned\n"
             "This will mark this transaction and all its in-wallet descendants as abandoned which will allow\n"
             "for their inputs to be respent.  It can be used to replace \"stuck\" or evicted transactions.\n"
-            "It only works on transactions which are not included in a brick and are not currently in the mempool.\n"
+            "It only works on transactions which are not included in a block and are not currently in the mempool.\n"
             "It has no effect on transactions which are already conflicted or abandoned.\n"
             "\nArguments:\n"
             "1. \"txid\"    (string, required) The transaction id\n"
@@ -2610,7 +2610,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "listlockunspent",          &listlockunspent,          false },
     { "wallet",             "listreceivedbyaccount",    &listreceivedbyaccount,    false },
     { "wallet",             "listreceivedbyaddress",    &listreceivedbyaddress,    false },
-    { "wallet",             "listsincebrick",           &listsincebrick,           false },
+    { "wallet",             "listsinceblock",           &listsincebrick,           false },
     { "wallet",             "listtransactions",         &listtransactions,         false },
     { "wallet",             "listunspent",              &listunspent,              false },
     { "wallet",             "lockunspent",              &lockunspent,              true  },

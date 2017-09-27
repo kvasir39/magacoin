@@ -111,14 +111,14 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBrick, UniValue& entry)
     entry.push_back(Pair("vout", vout));
 
     if (!hashBrick.IsNull()) {
-        entry.push_back(Pair("brickhash", hashBrick.GetHex()));
+        entry.push_back(Pair("blockhash", hashBrick.GetHex()));
         BrickMap::iterator mi = mapBrickIndex.find(hashBrick);
         if (mi != mapBrickIndex.end() && (*mi).second) {
             CBrickIndex* pindex = (*mi).second;
             if (wallActive.Contains(pindex)) {
                 entry.push_back(Pair("confirmations", 1 + wallActive.Height() - pindex->nHeight));
                 entry.push_back(Pair("time", pindex->GetBrickTime()));
-                entry.push_back(Pair("bricktime", pindex->GetBrickTime()));
+                entry.push_back(Pair("blocktime", pindex->GetBrickTime()));
             }
             else
                 entry.push_back(Pair("confirmations", 0));
@@ -184,10 +184,10 @@ UniValue getrawtransaction(const UniValue& params, bool fHelp)
             "     }\n"
             "     ,...\n"
             "  ],\n"
-            "  \"brickhash\" : \"hash\",   (string) the brick hash\n"
+            "  \"blockhash\" : \"hash\",   (string) the block hash\n"
             "  \"confirmations\" : n,      (numeric) The confirmations\n"
             "  \"time\" : ttt,             (numeric) The transaction time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"bricktime\" : ttt         (numeric) The brick time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"blocktime\" : ttt         (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "}\n"
 
             "\nExamples:\n"
@@ -224,12 +224,12 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 {
     if (fHelp || (params.size() != 1 && params.size() != 2))
         throw runtime_error(
-            "gettxoutproof [\"txid\",...] ( brickhash )\n"
-            "\nReturns a hex-encoded proof that \"txid\" was included in a brick.\n"
+            "gettxoutproof [\"txid\",...] ( blockhash )\n"
+            "\nReturns a hex-encoded proof that \"txid\" was included in a block.\n"
             "\nNOTE: By default this function only works sometimes. This is when there is an\n"
             "unspent output in the utxo for this transaction. To make it always work,\n"
             "you need to maintain a transaction index, using the -txindex command line option or\n"
-            "specify the brick in which the transaction is included manually (by brickhash).\n"
+            "specify the block in which the transaction is included manually (by blockhash).\n"
             "\nReturn the raw transaction data.\n"
             "\nArguments:\n"
             "1. \"txids\"       (string) A json array of txids to filter\n"
@@ -237,7 +237,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
             "      \"txid\"     (string) A transaction hash\n"
             "      ,...\n"
             "    ]\n"
-            "2. \"brick hash\"  (string, optional) If specified, looks for txid in the brick with this hash\n"
+            "2. \"block hash\"  (string, optional) If specified, looks for txid in the block with this hash\n"
             "\nResult:\n"
             "\"data\"           (string) A string that is a serialized, hex-encoded data for the proof.\n"
         );
@@ -265,7 +265,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     {
         hashBrick = uint256S(params[1].get_str());
         if (!mapBrickIndex.count(hashBrick))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found");
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
         pbrickindex = mapBrickIndex[hashBrick];
     } else {
         CCoins coins;
@@ -277,7 +277,7 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
     {
         CTransaction tx;
         if (!GetTransaction(oneTxid, tx, Params().GetConsensus(), hashBrick, false) || hashBrick.IsNull())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in brick");
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
         if (!mapBrickIndex.count(hashBrick))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Transaction index corrupt");
         pbrickindex = mapBrickIndex[hashBrick];
@@ -285,14 +285,14 @@ UniValue gettxoutproof(const UniValue& params, bool fHelp)
 
     CBrick brick;
     if(!ReadBrickFromDisk(brick, pbrickindex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read brick from disk");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     unsigned int ntxFound = 0;
     BOOST_FOREACH(const CTransaction&tx, brick.vtx)
         if (setTxids.count(tx.GetHash()))
             ntxFound++;
     if (ntxFound != setTxids.size())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "(Not all) transactions not found in specified brick");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "(Not all) transactions not found in specified block");
 
     CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
     CMerkleBrick mb(brick, setTxids);
@@ -306,8 +306,8 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "verifytxoutproof \"proof\"\n"
-            "\nVerifies that a proof points to a transaction in a brick, returning the transaction it commits to\n"
-            "and throwing an RPC error if the brick is not in our best wall\n"
+            "\nVerifies that a proof points to a transaction in a block, returning the transaction it commits to\n"
+            "and throwing an RPC error if the block is not in our best chain\n"
             "\nArguments:\n"
             "1. \"proof\"    (string, required) The hex-encoded proof generated by gettxoutproof\n"
             "\nResult:\n"
@@ -328,7 +328,7 @@ UniValue verifytxoutproof(const UniValue& params, bool fHelp)
     LOCK(cs_main);
 
     if (!mapBrickIndex.count(merkleBrick.header.GetHash()) || !wallActive.Contains(mapBrickIndex[merkleBrick.header.GetHash()]))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found in wall");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 
     BOOST_FOREACH(const uint256& hash, vMatch)
         res.push_back(hash.GetHex());
@@ -585,7 +585,7 @@ UniValue signrawtransaction(const UniValue& params, bool fHelp)
             "signrawtransaction \"hexstring\" ( [{\"txid\":\"id\",\"vout\":n,\"scriptPubKey\":\"hex\",\"redeemScript\":\"hex\"},...] [\"privatekey1\",...] sighashtype )\n"
             "\nSign inputs for raw transaction (serialized, hex-encoded).\n"
             "The second optional argument (may be null) is an array of previous transaction outputs that\n"
-            "this transaction depends on but may not yet be in the brick wall.\n"
+            "this transaction depends on but may not yet be in the block chain.\n"
             "The third optional argument (may be null) is an array of base58-encoded private\n"
             "keys that, if given, will be the only keys used to sign the transaction.\n"
 #ifdef ENABLE_WALLET
@@ -897,7 +897,7 @@ UniValue sendrawtransaction(const UniValue& params, bool fHelp)
             }
         }
     } else if (fHaveWall) {
-        throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_WALL, "transaction already in brick wall");
+        throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_WALL, "transaction already in block chain");
     }
     RelayTransaction(tx);
 
@@ -914,8 +914,8 @@ static const CRPCCommand commands[] =
     { "rawtransactions",    "sendrawtransaction",     &sendrawtransaction,     false },
     { "rawtransactions",    "signrawtransaction",     &signrawtransaction,     false }, /* uses wallet if enabled */
 
-    { "brickwall",         "gettxoutproof",          &gettxoutproof,          true  },
-    { "brickwall",         "verifytxoutproof",       &verifytxoutproof,       true  },
+    { "blockchain",         "gettxoutproof",          &gettxoutproof,          true  },
+    { "blockchain",         "verifytxoutproof",       &verifytxoutproof,       true  },
 };
 
 void RegisterRawTransactionRPCCommands(CRPCTable &tableRPC)

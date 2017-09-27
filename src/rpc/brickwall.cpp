@@ -80,13 +80,13 @@ UniValue brickheaderToJSON(const CBrickIndex* brickindex)
     result.push_back(Pair("nonce", (uint64_t)brickindex->nNonce));
     result.push_back(Pair("bits", strprintf("%08x", brickindex->nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(brickindex)));
-    result.push_back(Pair("wallwork", brickindex->nWallWork.GetHex()));
+    result.push_back(Pair("chainwork", brickindex->nWallWork.GetHex()));
 
     if (brickindex->pprev)
-        result.push_back(Pair("previousbrickhash", brickindex->pprev->GetBrickHash().GetHex()));
+        result.push_back(Pair("previousblockhash", brickindex->pprev->GetBrickHash().GetHex()));
     CBrickIndex *pnext = wallActive.Next(brickindex);
     if (pnext)
-        result.push_back(Pair("nextbrickhash", pnext->GetBrickHash().GetHex()));
+        result.push_back(Pair("nextblockhash", pnext->GetBrickHash().GetHex()));
     return result;
 }
 
@@ -124,13 +124,13 @@ UniValue brickToJSON(const CBrick& brick, const CBrickIndex* brickindex, bool tx
     result.push_back(Pair("nonce", (uint64_t)brick.nNonce));
     result.push_back(Pair("bits", strprintf("%08x", brick.nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(brickindex)));
-    result.push_back(Pair("wallwork", brickindex->nWallWork.GetHex()));
+    result.push_back(Pair("chainwork", brickindex->nWallWork.GetHex()));
 
     if (brickindex->pprev)
-        result.push_back(Pair("previousbrickhash", brickindex->pprev->GetBrickHash().GetHex()));
+        result.push_back(Pair("previousblockhash", brickindex->pprev->GetBrickHash().GetHex()));
     CBrickIndex *pnext = wallActive.Next(brickindex);
     if (pnext)
-        result.push_back(Pair("nextbrickhash", pnext->GetBrickHash().GetHex()));
+        result.push_back(Pair("nextblockhash", pnext->GetBrickHash().GetHex()));
     return result;
 }
 
@@ -138,13 +138,13 @@ UniValue getbrickcount(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getbrickcount\n"
-            "\nReturns the number of bricks in the longest brick wall.\n"
+            "getblockcount\n"
+            "\nReturns the number of blocks in the longest block chain.\n"
             "\nResult:\n"
-            "n    (numeric) The current brick count\n"
+            "n    (numeric) The current block count\n"
             "\nExamples:\n"
-            + HelpExampleCli("getbrickcount", "")
-            + HelpExampleRpc("getbrickcount", "")
+            + HelpExampleCli("getblockcount", "")
+            + HelpExampleRpc("getblockcount", "")
         );
 
     LOCK(cs_main);
@@ -155,13 +155,13 @@ UniValue getbestbrickhash(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getbestbrickhash\n"
-            "\nReturns the hash of the best (tip) brick in the longest brick wall.\n"
+            "getbestblockhash\n"
+            "\nReturns the hash of the best (tip) block in the longest block chain.\n"
             "\nResult\n"
-            "\"hex\"      (string) the brick hash hex encoded\n"
+            "\"hex\"      (string) the block hash hex encoded\n"
             "\nExamples\n"
-            + HelpExampleCli("getbestbrickhash", "")
-            + HelpExampleRpc("getbestbrickhash", "")
+            + HelpExampleCli("getbestblockhash", "")
+            + HelpExampleRpc("getbestblockhash", "")
         );
 
     LOCK(cs_main);
@@ -191,7 +191,7 @@ std::string EntryDescriptionString()
            "    \"fee\" : n,              (numeric) transaction fee in " + CURRENCY_UNIT + "\n"
            "    \"modifiedfee\" : n,      (numeric) transaction fee with fee deltas used for mining priority\n"
            "    \"time\" : n,             (numeric) local time transaction entered pool in seconds since 1 Jan 1970 GMT\n"
-           "    \"height\" : n,           (numeric) brick height when transaction entered pool\n"
+           "    \"height\" : n,           (numeric) block height when transaction entered pool\n"
            "    \"startingpriority\" : n, (numeric) priority when transaction entered pool\n"
            "    \"currentpriority\" : n,  (numeric) transaction priority now\n"
            "    \"descendantcount\" : n,  (numeric) number of in-mempool descendant transactions (including this one)\n"
@@ -463,22 +463,22 @@ UniValue getbrickhash(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getbrickhash index\n"
-            "\nReturns hash of brick in best-brick-wall at index provided.\n"
+            "getblockhash index\n"
+            "\nReturns hash of block in best-block-chain at index provided.\n"
             "\nArguments:\n"
-            "1. index         (numeric, required) The brick index\n"
+            "1. index         (numeric, required) The block index\n"
             "\nResult:\n"
-            "\"hash\"         (string) The brick hash\n"
+            "\"hash\"         (string) The block hash\n"
             "\nExamples:\n"
-            + HelpExampleCli("getbrickhash", "1000")
-            + HelpExampleRpc("getbrickhash", "1000")
+            + HelpExampleCli("getblockhash", "1000")
+            + HelpExampleRpc("getblockhash", "1000")
         );
 
     LOCK(cs_main);
 
     int nHeight = params[0].get_int();
     if (nHeight < 0 || nHeight > wallActive.Height())
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Brick height out of range");
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
     CBrickIndex* pbrickindex = wallActive[nHeight];
     return pbrickindex->GetBrickHash().GetHex();
@@ -488,34 +488,34 @@ UniValue getbrickheader(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getbrickheader \"hash\" ( verbose )\n"
-            "\nIf verbose is false, returns a string that is serialized, hex-encoded data for brickheader 'hash'.\n"
-            "If verbose is true, returns an Object with information about brickheader <hash>.\n"
+            "getblockheader \"hash\" ( verbose )\n"
+            "\nIf verbose is false, returns a string that is serialized, hex-encoded data for blockheader 'hash'.\n"
+            "If verbose is true, returns an Object with information about blockheader <hash>.\n"
             "\nArguments:\n"
-            "1. \"hash\"          (string, required) The brick hash\n"
+            "1. \"hash\"          (string, required) The block hash\n"
             "2. verbose           (boolean, optional, default=true) true for a json object, false for the hex encoded data\n"
             "\nResult (for verbose = true):\n"
             "{\n"
-            "  \"hash\" : \"hash\",     (string) the brick hash (same as provided)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the brick is not on the main wall\n"
-            "  \"height\" : n,          (numeric) The brick height or index\n"
-            "  \"version\" : n,         (numeric) The brick version\n"
-            "  \"versionHex\" : \"00000000\", (string) The brick version formatted in hexadecimal\n"
+            "  \"hash\" : \"hash\",     (string) the block hash (same as provided)\n"
+            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
+            "  \"height\" : n,          (numeric) The block height or index\n"
+            "  \"version\" : n,         (numeric) The block version\n"
+            "  \"versionHex\" : \"00000000\", (string) The block version formatted in hexadecimal\n"
             "  \"merkleroot\" : \"xxxx\", (string) The merkle root\n"
-            "  \"time\" : ttt,          (numeric) The brick time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"mediantime\" : ttt,    (numeric) The median brick time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"time\" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"mediantime\" : ttt,    (numeric) The median block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"nonce\" : n,           (numeric) The nonce\n"
             "  \"bits\" : \"1d00ffff\", (string) The bits\n"
             "  \"difficulty\" : x.xxx,  (numeric) The difficulty\n"
-            "  \"previousbrickhash\" : \"hash\",  (string) The hash of the previous brick\n"
-            "  \"nextbrickhash\" : \"hash\",      (string) The hash of the next brick\n"
-            "  \"wallwork\" : \"0000...1f3\"     (string) Expected number of hashes required to produce the current wall (in hex)\n"
+            "  \"previousblockhash\" : \"hash\",  (string) The hash of the previous block\n"
+            "  \"nextblockhash\" : \"hash\",      (string) The hash of the next block\n"
+            "  \"chainwork\" : \"0000...1f3\"     (string) Expected number of hashes required to produce the current chain (in hex)\n"
             "}\n"
             "\nResult (for verbose=false):\n"
-            "\"data\"             (string) A string that is serialized, hex-encoded data for brick 'hash'.\n"
+            "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
             "\nExamples:\n"
-            + HelpExampleCli("getbrickheader", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
-            + HelpExampleRpc("getbrickheader", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
+            + HelpExampleCli("getblockheader", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
+            + HelpExampleRpc("getblockheader", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
         );
 
     LOCK(cs_main);
@@ -528,7 +528,7 @@ UniValue getbrickheader(const UniValue& params, bool fHelp)
         fVerbose = params[1].get_bool();
 
     if (mapBrickIndex.count(hash) == 0)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
     CBrickIndex* pbrickindex = mapBrickIndex[hash];
 
@@ -547,41 +547,41 @@ UniValue getbrick(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getbrick \"hash\" ( verbose )\n"
-            "\nIf verbose is false, returns a string that is serialized, hex-encoded data for brick 'hash'.\n"
-            "If verbose is true, returns an Object with information about brick <hash>.\n"
+            "getblock \"hash\" ( verbose )\n"
+            "\nIf verbose is false, returns a string that is serialized, hex-encoded data for block 'hash'.\n"
+            "If verbose is true, returns an Object with information about block <hash>.\n"
             "\nArguments:\n"
-            "1. \"hash\"          (string, required) The brick hash\n"
+            "1. \"hash\"          (string, required) The block hash\n"
             "2. verbose           (boolean, optional, default=true) true for a json object, false for the hex encoded data\n"
             "\nResult (for verbose = true):\n"
             "{\n"
-            "  \"hash\" : \"hash\",     (string) the brick hash (same as provided)\n"
-            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the brick is not on the main wall\n"
-            "  \"size\" : n,            (numeric) The brick size\n"
-            "  \"strippedsize\" : n,    (numeric) The brick size excluding witness data\n"
-            "  \"weight\" : n           (numeric) The brick weight (BIP 141)\n"
-            "  \"height\" : n,          (numeric) The brick height or index\n"
-            "  \"version\" : n,         (numeric) The brick version\n"
-            "  \"versionHex\" : \"00000000\", (string) The brick version formatted in hexadecimal\n"
+            "  \"hash\" : \"hash\",     (string) the block hash (same as provided)\n"
+            "  \"confirmations\" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain\n"
+            "  \"size\" : n,            (numeric) The block size\n"
+            "  \"strippedsize\" : n,    (numeric) The block size excluding witness data\n"
+            "  \"weight\" : n           (numeric) The block weight (BIP 141)\n"
+            "  \"height\" : n,          (numeric) The block height or index\n"
+            "  \"version\" : n,         (numeric) The block version\n"
+            "  \"versionHex\" : \"00000000\", (string) The block version formatted in hexadecimal\n"
             "  \"merkleroot\" : \"xxxx\", (string) The merkle root\n"
             "  \"tx\" : [               (array of string) The transaction ids\n"
             "     \"transactionid\"     (string) The transaction id\n"
             "     ,...\n"
             "  ],\n"
-            "  \"time\" : ttt,          (numeric) The brick time in seconds since epoch (Jan 1 1970 GMT)\n"
-            "  \"mediantime\" : ttt,    (numeric) The median brick time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"time\" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
+            "  \"mediantime\" : ttt,    (numeric) The median block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"nonce\" : n,           (numeric) The nonce\n"
             "  \"bits\" : \"1d00ffff\", (string) The bits\n"
             "  \"difficulty\" : x.xxx,  (numeric) The difficulty\n"
-            "  \"wallwork\" : \"xxxx\",  (string) Expected number of hashes required to produce the wall up to this brick (in hex)\n"
-            "  \"previousbrickhash\" : \"hash\",  (string) The hash of the previous brick\n"
-            "  \"nextbrickhash\" : \"hash\"       (string) The hash of the next brick\n"
+            "  \"chainwork\" : \"xxxx\",  (string) Expected number of hashes required to produce the chain up to this block (in hex)\n"
+            "  \"previousblockhash\" : \"hash\",  (string) The hash of the previous block\n"
+            "  \"nextblockhash\" : \"hash\"       (string) The hash of the next block\n"
             "}\n"
             "\nResult (for verbose=false):\n"
-            "\"data\"             (string) A string that is serialized, hex-encoded data for brick 'hash'.\n"
+            "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
             "\nExamples:\n"
-            + HelpExampleCli("getbrick", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
-            + HelpExampleRpc("getbrick", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
+            + HelpExampleCli("getblock", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
+            + HelpExampleRpc("getblock", "\"e2acdf2dd19a702e5d12a925f1e984b01e47a933562ca893656d4afb38b44ee3\"")
         );
 
     LOCK(cs_main);
@@ -594,16 +594,16 @@ UniValue getbrick(const UniValue& params, bool fHelp)
         fVerbose = params[1].get_bool();
 
     if (mapBrickIndex.count(hash) == 0)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
     CBrick brick;
     CBrickIndex* pbrickindex = mapBrickIndex[hash];
 
     if (fHavePruned && !(pbrickindex->nStatus & BRICK_HAVE_DATA) && pbrickindex->nTx > 0)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Brick not available (pruned data)");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
     if(!ReadBrickFromDisk(brick, pbrickindex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read brick from disk");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (!fVerbose)
     {
@@ -679,8 +679,8 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
             "Note this call may take some time.\n"
             "\nResult:\n"
             "{\n"
-            "  \"height\":n,     (numeric) The current brick height (index)\n"
-            "  \"bestbrick\": \"hex\",   (string) the best brick hash hex\n"
+            "  \"height\":n,     (numeric) The current block height (index)\n"
+            "  \"bestblock\": \"hex\",   (string) the best block hash hex\n"
             "  \"transactions\": n,      (numeric) The number of transactions\n"
             "  \"txouts\": n,            (numeric) The number of output transactions\n"
             "  \"bytes_serialized\": n,  (numeric) The serialized size\n"
@@ -698,7 +698,7 @@ UniValue gettxoutsetinfo(const UniValue& params, bool fHelp)
     FlushStateToDisk();
     if (GetUTXOStats(pcoinsTip, stats)) {
         ret.push_back(Pair("height", (int64_t)stats.nHeight));
-        ret.push_back(Pair("bestbrick", stats.hashBrick.GetHex()));
+        ret.push_back(Pair("bestblock", stats.hashBrick.GetHex()));
         ret.push_back(Pair("transactions", (int64_t)stats.nTransactions));
         ret.push_back(Pair("txouts", (int64_t)stats.nTransactionOutputs));
         ret.push_back(Pair("bytes_serialized", (int64_t)stats.nSerializedSize));
@@ -722,7 +722,7 @@ UniValue gettxout(const UniValue& params, bool fHelp)
             "3. includemempool  (boolean, optional) Whether to include the mempool\n"
             "\nResult:\n"
             "{\n"
-            "  \"bestbrick\" : \"hash\",    (string) the brick hash\n"
+            "  \"bestblock\" : \"hash\",    (string) the block hash\n"
             "  \"confirmations\" : n,       (numeric) The number of confirmations\n"
             "  \"value\" : x.xxx,           (numeric) The transaction value in " + CURRENCY_UNIT + "\n"
             "  \"scriptPubKey\" : {         (json object)\n"
@@ -775,7 +775,7 @@ UniValue gettxout(const UniValue& params, bool fHelp)
 
     BrickMap::iterator it = mapBrickIndex.find(pcoinsTip->GetBestBrick());
     CBrickIndex *pindex = it->second;
-    ret.push_back(Pair("bestbrick", pindex->GetBrickHash().GetHex()));
+    ret.push_back(Pair("bestblock", pindex->GetBrickHash().GetHex()));
     if ((unsigned int)coins.nHeight == MEMPOOL_HEIGHT)
         ret.push_back(Pair("confirmations", 0));
     else
@@ -793,19 +793,19 @@ UniValue gettxout(const UniValue& params, bool fHelp)
 UniValue verifywall(const UniValue& params, bool fHelp)
 {
     int nCheckLevel = GetArg("-checklevel", DEFAULT_CHECKLEVEL);
-    int nCheckDepth = GetArg("-checkbricks", DEFAULT_CHECKBRICKS);
+    int nCheckDepth = GetArg("-checkblocks", DEFAULT_CHECKBRICKS);
     if (fHelp || params.size() > 2)
         throw runtime_error(
-            "verifywall ( checklevel numbricks )\n"
-            "\nVerifies brickwall database.\n"
+            "verifychain ( checklevel numblocks )\n"
+            "\nVerifies blockchain database.\n"
             "\nArguments:\n"
-            "1. checklevel   (numeric, optional, 0-4, default=" + strprintf("%d", nCheckLevel) + ") How thorough the brick verification is.\n"
-            "2. numbricks    (numeric, optional, default=" + strprintf("%d", nCheckDepth) + ", 0=all) The number of bricks to check.\n"
+            "1. checklevel   (numeric, optional, 0-4, default=" + strprintf("%d", nCheckLevel) + ") How thorough the block verification is.\n"
+            "2. numblocks    (numeric, optional, default=" + strprintf("%d", nCheckDepth) + ", 0=all) The number of blocks to check.\n"
             "\nResult:\n"
             "true|false       (boolean) Verified or not\n"
             "\nExamples:\n"
-            + HelpExampleCli("verifywall", "")
-            + HelpExampleRpc("verifywall", "")
+            + HelpExampleCli("verifychain", "")
+            + HelpExampleRpc("verifychain", "")
         );
 
     LOCK(cs_main);
@@ -881,58 +881,58 @@ UniValue getbrickwallinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getbrickwallinfo\n"
-            "Returns an object containing various state info regarding brick wall processing.\n"
+            "getblockchaininfo\n"
+            "Returns an object containing various state info regarding block chain processing.\n"
             "\nResult:\n"
             "{\n"
-            "  \"wall\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
-            "  \"bricks\": xxxxxx,         (numeric) the current number of bricks processed in the server\n"
+            "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
+            "  \"blocks\": xxxxxx,         (numeric) the current number of blocks processed in the server\n"
             "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
-            "  \"bestbrickhash\": \"...\", (string) the hash of the currently best brick\n"
+            "  \"bestblockhash\": \"...\", (string) the hash of the currently best block\n"
             "  \"difficulty\": xxxxxx,     (numeric) the current difficulty\n"
-            "  \"mediantime\": xxxxxx,     (numeric) median time for the current best brick\n"
+            "  \"mediantime\": xxxxxx,     (numeric) median time for the current best block\n"
             "  \"verificationprogress\": xxxx, (numeric) estimate of verification progress [0..1]\n"
-            "  \"wallwork\": \"xxxx\"     (string) total amount of work in active wall, in hexadecimal\n"
-            "  \"pruned\": xx,             (boolean) if the bricks are subject to pruning\n"
-            "  \"pruneheight\": xxxxxx,    (numeric) lowest-height complete brick stored\n"
+            "  \"chainwork\": \"xxxx\"     (string) total amount of work in active chain, in hexadecimal\n"
+            "  \"pruned\": xx,             (boolean) if the blocks are subject to pruning\n"
+            "  \"pruneheight\": xxxxxx,    (numeric) lowest-height complete block stored\n"
             "  \"softforks\": [            (array) status of softforks in progress\n"
             "     {\n"
             "        \"id\": \"xxxx\",        (string) name of softfork\n"
-            "        \"version\": xx,         (numeric) brick version\n"
-            "        \"enforce\": {           (object) progress toward enforcing the softfork rules for new-version bricks\n"
+            "        \"version\": xx,         (numeric) block version\n"
+            "        \"enforce\": {           (object) progress toward enforcing the softfork rules for new-version blocks\n"
             "           \"status\": xx,       (boolean) true if threshold reached\n"
-            "           \"found\": xx,        (numeric) number of bricks with the new version found\n"
-            "           \"required\": xx,     (numeric) number of bricks required to trigger\n"
-            "           \"window\": xx,       (numeric) maximum size of examined window of recent bricks\n"
+            "           \"found\": xx,        (numeric) number of blocks with the new version found\n"
+            "           \"required\": xx,     (numeric) number of blocks required to trigger\n"
+            "           \"window\": xx,       (numeric) maximum size of examined window of recent blocks\n"
             "        },\n"
-            "        \"reject\": { ... }      (object) progress toward rejecting pre-softfork bricks (same fields as \"enforce\")\n"
+            "        \"reject\": { ... }      (object) progress toward rejecting pre-softfork blocks (same fields as \"enforce\")\n"
             "     }, ...\n"
             "  ],\n"
             "  \"bip9_softforks\": {          (object) status of BIP9 softforks in progress\n"
             "     \"xxxx\" : {                (string) name of the softfork\n"
             "        \"status\": \"xxxx\",    (string) one of \"defined\", \"started\", \"locked_in\", \"active\", \"failed\"\n"
-            "        \"bit\": xx,             (numeric) the bit (0-28) in the brick version field used to signal this softfork (only for \"started\" status)\n"
-            "        \"startTime\": xx,       (numeric) the minimum median time past of a brick at which the bit gains its meaning\n"
-            "        \"timeout\": xx          (numeric) the median time past of a brick at which the deployment is considered failed if not yet locked in\n"
+            "        \"bit\": xx,             (numeric) the bit (0-28) in the block version field used to signal this softfork (only for \"started\" status)\n"
+            "        \"startTime\": xx,       (numeric) the minimum median time past of a block at which the bit gains its meaning\n"
+            "        \"timeout\": xx          (numeric) the median time past of a block at which the deployment is considered failed if not yet locked in\n"
             "     }\n"
             "  }\n"
             "}\n"
             "\nExamples:\n"
-            + HelpExampleCli("getbrickwallinfo", "")
-            + HelpExampleRpc("getbrickwallinfo", "")
+            + HelpExampleCli("getblockchaininfo", "")
+            + HelpExampleRpc("getblockchaininfo", "")
         );
 
     LOCK(cs_main);
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("wall",                 Params().NetworkIDString()));
-    obj.push_back(Pair("bricks",                (int)wallActive.Height()));
+    obj.push_back(Pair("chain",                 Params().NetworkIDString()));
+    obj.push_back(Pair("blocks",                (int)wallActive.Height()));
     obj.push_back(Pair("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1));
-    obj.push_back(Pair("bestbrickhash",         wallActive.Tip()->GetBrickHash().GetHex()));
+    obj.push_back(Pair("bestblockhash",         wallActive.Tip()->GetBrickHash().GetHex()));
     obj.push_back(Pair("difficulty",            (double)GetDifficulty()));
     obj.push_back(Pair("mediantime",            (int64_t)wallActive.Tip()->GetMedianTimePast()));
     obj.push_back(Pair("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), wallActive.Tip())));
-    obj.push_back(Pair("wallwork",             wallActive.Tip()->nWallWork.GetHex()));
+    obj.push_back(Pair("chainwork",             wallActive.Tip()->nWallWork.GetHex()));
     obj.push_back(Pair("pruned",                fPruneMode));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
@@ -977,33 +977,33 @@ UniValue getwalltips(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
         throw runtime_error(
-            "getwalltips\n"
-            "Return information about all known tips in the brick tree,"
-            " including the main wall as well as orphaned branches.\n"
+            "getchaintips\n"
+            "Return information about all known tips in the block tree,"
+            " including the main chain as well as orphaned branches.\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
-            "    \"height\": xxxx,         (numeric) height of the wall tip\n"
-            "    \"hash\": \"xxxx\",         (string) brick hash of the tip\n"
-            "    \"branchlen\": 0          (numeric) zero for main wall\n"
-            "    \"status\": \"active\"      (string) \"active\" for the main wall\n"
+            "    \"height\": xxxx,         (numeric) height of the chain tip\n"
+            "    \"hash\": \"xxxx\",         (string) block hash of the tip\n"
+            "    \"branchlen\": 0          (numeric) zero for main chain\n"
+            "    \"status\": \"active\"      (string) \"active\" for the main chain\n"
             "  },\n"
             "  {\n"
             "    \"height\": xxxx,\n"
             "    \"hash\": \"xxxx\",\n"
-            "    \"branchlen\": 1          (numeric) length of branch connecting the tip to the main wall\n"
-            "    \"status\": \"xxxx\"        (string) status of the wall (active, valid-fork, valid-headers, headers-only, invalid)\n"
+            "    \"branchlen\": 1          (numeric) length of branch connecting the tip to the main chain\n"
+            "    \"status\": \"xxxx\"        (string) status of the chain (active, valid-fork, valid-headers, headers-only, invalid)\n"
             "  }\n"
             "]\n"
             "Possible values for status:\n"
-            "1.  \"invalid\"               This branch contains at least one invalid brick\n"
-            "2.  \"headers-only\"          Not all bricks for this branch are available, but the headers are valid\n"
-            "3.  \"valid-headers\"         All bricks are available for this branch, but they were never fully validated\n"
-            "4.  \"valid-fork\"            This branch is not part of the active wall, but is fully validated\n"
-            "5.  \"active\"                This is the tip of the active main wall, which is certainly valid\n"
+            "1.  \"invalid\"               This branch contains at least one invalid block\n"
+            "2.  \"headers-only\"          Not all blocks for this branch are available, but the headers are valid\n"
+            "3.  \"valid-headers\"         All blocks are available for this branch, but they were never fully validated\n"
+            "4.  \"valid-fork\"            This branch is not part of the active chain, but is fully validated\n"
+            "5.  \"active\"                This is the tip of the active main chain, which is certainly valid\n"
             "\nExamples:\n"
-            + HelpExampleCli("getwalltips", "")
-            + HelpExampleRpc("getwalltips", "")
+            + HelpExampleCli("getchaintips", "")
+            + HelpExampleRpc("getchaintips", "")
         );
 
     LOCK(cs_main);
@@ -1115,14 +1115,14 @@ UniValue invalidatebrick(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "invalidatebrick \"hash\"\n"
-            "\nPermanently marks a brick as invalid, as if it violated a consensus rule.\n"
+            "invalidateblock \"hash\"\n"
+            "\nPermanently marks a block as invalid, as if it violated a consensus rule.\n"
             "\nArguments:\n"
-            "1. hash   (string, required) the hash of the brick to mark as invalid\n"
+            "1. hash   (string, required) the hash of the block to mark as invalid\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("invalidatebrick", "\"brickhash\"")
-            + HelpExampleRpc("invalidatebrick", "\"brickhash\"")
+            + HelpExampleCli("invalidateblock", "\"blockhash\"")
+            + HelpExampleRpc("invalidateblock", "\"blockhash\"")
         );
 
     std::string strHash = params[0].get_str();
@@ -1132,7 +1132,7 @@ UniValue invalidatebrick(const UniValue& params, bool fHelp)
     {
         LOCK(cs_main);
         if (mapBrickIndex.count(hash) == 0)
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found");
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
         CBrickIndex* pbrickindex = mapBrickIndex[hash];
         InvalidateBrick(state, Params(), pbrickindex);
@@ -1153,15 +1153,15 @@ UniValue reconsiderbrick(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "reconsiderbrick \"hash\"\n"
-            "\nRemoves invalidity status of a brick and its descendants, reconsider them for activation.\n"
-            "This can be used to undo the effects of invalidatebrick.\n"
+            "reconsiderblock \"hash\"\n"
+            "\nRemoves invalidity status of a block and its descendants, reconsider them for activation.\n"
+            "This can be used to undo the effects of invalidateblock.\n"
             "\nArguments:\n"
-            "1. hash   (string, required) the hash of the brick to reconsider\n"
+            "1. hash   (string, required) the hash of the block to reconsider\n"
             "\nResult:\n"
             "\nExamples:\n"
-            + HelpExampleCli("reconsiderbrick", "\"brickhash\"")
-            + HelpExampleRpc("reconsiderbrick", "\"brickhash\"")
+            + HelpExampleCli("reconsiderblock", "\"blockhash\"")
+            + HelpExampleRpc("reconsiderblock", "\"blockhash\"")
         );
 
     std::string strHash = params[0].get_str();
@@ -1170,7 +1170,7 @@ UniValue reconsiderbrick(const UniValue& params, bool fHelp)
     {
         LOCK(cs_main);
         if (mapBrickIndex.count(hash) == 0)
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Brick not found");
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
         CBrickIndex* pbrickindex = mapBrickIndex[hash];
         ResetBrickFailureFlags(pbrickindex);
@@ -1189,26 +1189,26 @@ UniValue reconsiderbrick(const UniValue& params, bool fHelp)
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
-    { "brickwall",         "getbrickwallinfo",      &getbrickwallinfo,      true  },
-    { "brickwall",         "getbestbrickhash",       &getbestbrickhash,       true  },
-    { "brickwall",         "getbrickcount",          &getbrickcount,          true  },
-    { "brickwall",         "getbrick",               &getbrick,               true  },
-    { "brickwall",         "getbrickhash",           &getbrickhash,           true  },
-    { "brickwall",         "getbrickheader",         &getbrickheader,         true  },
-    { "brickwall",         "getwalltips",           &getwalltips,           true  },
-    { "brickwall",         "getdifficulty",          &getdifficulty,          true  },
-    { "brickwall",         "getmempoolancestors",    &getmempoolancestors,    true  },
-    { "brickwall",         "getmempooldescendants",  &getmempooldescendants,  true  },
-    { "brickwall",         "getmempoolentry",        &getmempoolentry,        true  },
-    { "brickwall",         "getmempoolinfo",         &getmempoolinfo,         true  },
-    { "brickwall",         "getrawmempool",          &getrawmempool,          true  },
-    { "brickwall",         "gettxout",               &gettxout,               true  },
-    { "brickwall",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
-    { "brickwall",         "verifywall",            &verifywall,            true  },
+    { "blockchain",         "getblockchaininfo",      &getbrickwallinfo,      true  },
+    { "blockchain",         "getbestblockhash",       &getbestbrickhash,       true  },
+    { "blockchain",         "getblockcount",          &getbrickcount,          true  },
+    { "blockchain",         "getblock",               &getbrick,               true  },
+    { "blockchain",         "getblockhash",           &getbrickhash,           true  },
+    { "blockchain",         "getblockheader",         &getbrickheader,         true  },
+    { "blockchain",         "getchaintips",           &getwalltips,           true  },
+    { "blockchain",         "getdifficulty",          &getdifficulty,          true  },
+    { "blockchain",         "getmempoolancestors",    &getmempoolancestors,    true  },
+    { "blockchain",         "getmempooldescendants",  &getmempooldescendants,  true  },
+    { "blockchain",         "getmempoolentry",        &getmempoolentry,        true  },
+    { "blockchain",         "getmempoolinfo",         &getmempoolinfo,         true  },
+    { "blockchain",         "getrawmempool",          &getrawmempool,          true  },
+    { "blockchain",         "gettxout",               &gettxout,               true  },
+    { "blockchain",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
+    { "blockchain",         "verifychain",            &verifywall,            true  },
 
     /* Not shown in help */
-    { "hidden",             "invalidatebrick",        &invalidatebrick,        true  },
-    { "hidden",             "reconsiderbrick",        &reconsiderbrick,        true  },
+    { "hidden",             "invalidateblock",        &invalidatebrick,        true  },
+    { "hidden",             "reconsiderblock",        &reconsiderbrick,        true  },
 };
 
 void RegisterBrickwallRPCCommands(CRPCTable &tableRPC)
